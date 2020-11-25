@@ -1,0 +1,116 @@
+import React, { useState } from 'react';
+import { Image, Text, View, Linking } from 'react-native';
+import { RectButton } from 'react-native-gesture-handler';
+
+import heartIcon from '../../assets/images/icons/heart-outline.png'
+import unfavoriteIcon from '../../assets/images/icons/unfavorite.png'
+import whatsIcon from '../../assets/images/icons/whatsapp.png'
+
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+import styles from './styles';
+import api from '../../services/api';
+
+export interface Teacher {
+  id: number,
+  avatar: string,
+  bio: string,
+  cost: number,
+  name: string,
+  subject: string,
+  whats: string
+}
+
+interface Props {
+  teacher: Teacher;
+  favorited: boolean;
+}
+
+const TeacherItem: React.FC<Props> = ({teacher, favorited}) => {
+  const [isFavorited, setIsFavorited] = useState(favorited);
+
+  function handleWhats() {
+    api.post('connections', {
+      user_id: teacher.id,
+    })
+
+    Linking.openURL(`whatsapp://send?phone=55${teacher.whats}`)
+  }
+
+  async function handleFavorite() {
+    const favorites = await AsyncStorage.getItem('favorites');
+
+    let favoritesArray = []
+
+    if (favorites) {
+      favoritesArray = JSON.parse(favorites);
+    }
+
+    if (isFavorited) {
+      const favoriteIndex = favoritesArray.findIndex((teacherFav: Teacher) => {
+        return teacherFav.id === teacher.id;
+      });
+
+      favoritesArray.splice(favoriteIndex, 1)
+
+      setIsFavorited(false); 
+    } else {
+      favoritesArray.push(teacher);
+
+      setIsFavorited(true); 
+    }
+
+    await AsyncStorage.setItem('favorites', JSON.stringify(favoritesArray))
+  }
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.profile} >
+        <Image
+          style={styles.avatar}
+          source={{ uri: teacher.avatar }}
+        />
+
+        <View style={styles.profileInfo}>
+          <Text style={styles.name}>{teacher.name}</Text>
+          <Text style={styles.subject}>{teacher.subject}</Text>
+        </View>
+      </View>
+
+      <Text style={styles.bio}>
+      {teacher.bio}
+      </Text>
+
+      <View style={styles.footer} > 
+        <Text style={styles.price}>
+          Preço/Hora {'   '}
+
+          <Text style={styles.value} >R${teacher.cost}</Text>
+        </Text>
+
+        <View style={styles.buttonsContainer}>
+          <RectButton 
+            onPress={handleFavorite} 
+            style={[
+              styles.favoriteButton, 
+              isFavorited ? styles.favorite : {}
+            ]} 
+          >
+            {isFavorited ? (
+              <Image source={unfavoriteIcon} />
+            ): (
+              <Image source={heartIcon} />
+            )}
+          </RectButton>
+
+          <RectButton onPress={handleWhats} style={styles.contactButton} >
+            <Image source={whatsIcon} />
+            <Text style={styles.contactButtonText} >Entrar em contato</Text>
+          </RectButton>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+export default TeacherItem;
